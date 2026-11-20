@@ -2545,7 +2545,16 @@ fun BitChordDesktopApp() {
                             return@fold
                         }
                         if (generation == homeGeneration && homeState !is UiState.Success) {
-                            homeState = UiState.Error(it.message ?: "Could not load Home")
+                            if (it.message == "Failed requirement.") {
+                                // YouTube can reject this browse with a generic 400 when an
+                                // expired account session is retried anonymously. Keep the
+                                // player usable: the rest of the app (search, local history,
+                                // queue and downloads) does not depend on this one Home feed.
+                                DesktopTrackLog.log("Home feed was rejected; opening Home without remote shelves")
+                                homeState = UiState.Success(emptyList())
+                            } else {
+                                homeState = UiState.Error(it.message ?: "Could not load Home")
+                            }
                         }
                     },
                 )
