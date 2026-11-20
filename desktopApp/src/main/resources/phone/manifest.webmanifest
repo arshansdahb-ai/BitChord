@@ -1,0 +1,18 @@
+{
+  "name": "BitChord Music",
+  "short_name": "BitChord",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#111115",
+  "theme_color": "#111115",
+  "id": "/",
+  "icons": [
+    {
+      "src": "/app-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

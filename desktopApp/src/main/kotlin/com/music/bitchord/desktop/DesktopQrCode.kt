@@ -56,11 +56,11 @@ private fun renderDesktopQr(content: String, sidePx: Int, density: Density): Ima
         QRCodeWriter().encode(
             content,
             BarcodeFormat.QR_CODE,
-            256,
-            256,
+            0,
+            0,
             mapOf(
                 EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,
-                EncodeHintType.MARGIN to 0,
+                EncodeHintType.MARGIN to 4,
                 EncodeHintType.CHARACTER_SET to "UTF-8",
             ),
         )
@@ -68,17 +68,14 @@ private fun renderDesktopQr(content: String, sidePx: Int, density: Density): Ima
     val image = ImageBitmap(sidePx, sidePx)
     val side = sidePx.toFloat()
     CanvasDrawScope().draw(density, LayoutDirection.Ltr, Canvas(image), Size(side, side)) {
-        val cell = side / matrix.width
-        val dot = cell * 0.86f
-        val inset = (cell - dot) / 2f
-        val radius = CornerRadius(dot * 0.3f, dot * 0.3f)
+        val cell = (sidePx / matrix.width).coerceAtLeast(1).toFloat()
+        val inset = (side - cell * matrix.width) / 2f
         for (y in 0 until matrix.height) for (x in 0 until matrix.width) {
             if (matrix.get(x, y)) {
-                drawRoundRect(
+                drawRect(
                     color = Color.Black,
                     topLeft = Offset(x * cell + inset, y * cell + inset),
-                    size = Size(dot, dot),
-                    cornerRadius = radius,
+                    size = Size(cell, cell),
                 )
             }
         }

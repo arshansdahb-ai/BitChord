@@ -3172,6 +3172,7 @@ fun NowPlayingScreen(
                                 // [PlayerArtwork.loaded] still flips the moment it does.
                                 modifier = Modifier
                                     .fillMaxSize()
+                                    .livingArtwork(isPlaying && !canvasRendered)
                                     .drawWithContent { if (art.loaded || !canvasRendered) drawContent() },
                             )
 

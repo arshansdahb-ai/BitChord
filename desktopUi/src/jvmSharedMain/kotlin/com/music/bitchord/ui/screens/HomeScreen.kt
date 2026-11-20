@@ -122,6 +122,7 @@ fun HomeScreen(
     /** The page's heading, or null for none — the desktop's pages carry no heading. */
     title: String?,
     signedIn: Boolean = true,
+    showSignInPrompt: Boolean = true,
     onSignIn: (() -> Unit)? = null,
     /**
      * Holding a card rather than tapping it. Every card on the feed answers,
@@ -168,7 +169,7 @@ fun HomeScreen(
             if (title != null) {
                 item { HomeTitle(title) }
             }
-            if (!signedIn && onSignIn != null) {
+            if (!signedIn && showSignInPrompt && onSignIn != null) {
                 item {
                     SignInBanner(onSignIn = onSignIn, modifier = Modifier.padding(bottom = 8.dp))
                 }

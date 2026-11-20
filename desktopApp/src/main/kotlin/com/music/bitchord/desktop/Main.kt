@@ -27,6 +27,12 @@ import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.painterResource
 
 fun main() {
+    // Apply quit-on-close to existing custom installations on this upgrade.
+    val persistence = DesktopPersistence()
+    if (!persistence.boolean("close_quits_custom5", false)) {
+        persistence.saveBoolean("close_to_tray", false)
+        persistence.saveBoolean("close_quits_custom5", true)
+    }
     // Before any WebView exists, so the sign-in window can start over with an empty jar.
     DesktopWebCookies.install()
     DesktopWindowVisibility.install()
@@ -61,14 +67,12 @@ fun main() {
             available = { DesktopPoTokenWebView.available },
         ).asTokenProvider(),
     )
-    // The public "apps open right now" count; see Presence.
-    DesktopPresence.install()
+    // Personal builds do not announce an install identifier to the official live counter.
     desktopMain()
 }
 
 private fun desktopMain() = application {
-    // Closing puts the window away rather than ending the process, while there is a tray icon to
-    // bring it back from — see [DesktopWindowVisibility].
+    // Close quits by default; hiding in the tray is an explicit opt-in.
     val visible by DesktopWindowVisibility.visible.collectAsState()
     val state = rememberWindowState(width = 1_220.dp, height = 780.dp)
     LaunchedEffect(visible) {
@@ -95,7 +99,7 @@ private fun desktopMain() = application {
     Window(
         onCloseRequest = { if (DesktopWindowVisibility.onCloseRequest()) exitApplication() },
         visible = visible,
-        title = "BitChord",
+        title = "BitChord Custom",
         icon = painterResource(Res.drawable.logo),
         state = state,
         // No system title bar on Windows, where the application draws its own instead — see
@@ -140,7 +144,7 @@ private fun desktopMain() = application {
                 (openingSize.width.value * transform.scaleX).roundToInt(),
                 (openingSize.height.value * transform.scaleY).roundToInt(),
             )
-            if (DesktopPlatform.isWindows && DesktopWindowsFrame.install("BitChord")) {
+            if (DesktopPlatform.isWindows && DesktopWindowsFrame.install("BitChord Custom")) {
                 DesktopWindowBackdrop.apply()
             } else if (DesktopPlatform.isMac && DesktopMacFrame.install(composeWindow)) {
                 DesktopWindowBackdrop.apply()

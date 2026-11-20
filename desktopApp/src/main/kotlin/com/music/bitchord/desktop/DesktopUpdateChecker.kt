@@ -47,6 +47,8 @@ internal object DesktopUpdateChecker {
     }
 
     suspend fun check(): UpdateInfo? = runCatching {
+        // Official installers do not contain this private build's changes.
+        if (currentVersion.contains("custom", ignoreCase = true)) return@runCatching null
         val response = http.get(LATEST_RELEASE_URL) {
             header("Accept", "application/vnd.github+json")
         }
@@ -57,10 +59,11 @@ internal object DesktopUpdateChecker {
         val url = release["html_url"]?.jsonPrimitive?.contentOrNull ?: return@runCatching null
         val latest = tag.removePrefix("v")
         if (!isNewer(latest, currentVersion)) return@runCatching null
+        val installer = installerUrl(release) ?: return@runCatching null
         UpdateInfo(
             version = latest,
             releaseUrl = url,
-            downloadUrl = installerUrl(release),
+            downloadUrl = installer,
             notes = release["body"]?.jsonPrimitive?.contentOrNull,
         )
     }.getOrNull()

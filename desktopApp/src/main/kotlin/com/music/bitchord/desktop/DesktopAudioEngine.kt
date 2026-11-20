@@ -117,6 +117,7 @@ class DesktopPlaybackEngine(
     @Volatile private var audioQuality = "HIGH"
     @Volatile private var crossfadeSeconds = 0
     @Volatile private var automixEnabled = false
+    @Volatile private var studioMixingAllowed = true
     /**
      * Whether a manual skip may blend into the next track instead of cutting. When on but neither
      * Automix nor a Crossfade length is set, it still keeps the incoming deck prepared so a skip has
@@ -485,6 +486,8 @@ class DesktopPlaybackEngine(
         if (!enabled && crossfadeSeconds == 0 && !skipMixEnabled) clearUpcoming()
     }
 
+    fun setStudioMixingAllowed(allowed: Boolean) { studioMixingAllowed = allowed }
+
     /** Enables blending into the next track on a manual skip; see [beginSkipMix]. */
     fun setSkipMixEnabled(enabled: Boolean) {
         skipMixEnabled = enabled
@@ -690,14 +693,17 @@ class DesktopPlaybackEngine(
         commands += Command.ClearUpcoming
     }
 
-    private fun transitionSecondsFor(next: Song?): Int = when {
-        next == null -> 0
+    private fun transitionSecondsFor(next: Song?): Int {
+        if (next == null || !studioMixingAllowed) return 0
+        DesktopMixSettings.pair(_state.value.song?.videoId, next.videoId)?.let { return it.seconds }
+        return when {
         crossfadeSeconds > 0 -> crossfadeSeconds
         automixEnabled -> AUTOMIX_FALLBACK_SECONDS
         // Skip-mix needs the incoming deck open to blend into, even when neither Automix nor a
         // Crossfade length would otherwise prepare one.
         skipMixEnabled -> AUTOMIX_FALLBACK_SECONDS
         else -> 0
+        }
     }
 
     // ---- the audio thread -----------------------------------------------
@@ -717,6 +723,7 @@ class DesktopPlaybackEngine(
      * the last word on it.
      */
     private var equalizer = DesktopEqualizer()
+    private val levelMatcher = DesktopLevelMatcher()
     private var equalizerIncoming = DesktopEqualizer()
     private var silence: DesktopSilenceSkipper? = null
 
@@ -857,6 +864,9 @@ class DesktopPlaybackEngine(
                 skippedUs = skippedFrames.coerceAtLeast(0L) * 1_000_000.0 / rate * deck,
             )
         }
+        val mixProfile = DesktopMixSettings.current.value
+        levelMatcher.process(samples, count, sink.format.channels, sink.format.sampleRate,
+            mixProfile.levelMatch, mixProfile.targetDb)
         sink.write(samples, count)
         framesWritten += count / sink.format.channels.coerceAtLeast(1)
         if (count > 0 && _state.value.awaitingAudio) _state.update { it.copy(awaitingAudio = false) }
@@ -896,6 +906,7 @@ class DesktopPlaybackEngine(
         val channels = sink.format.channels.coerceAtLeast(1)
         val plan = activePlan
         val subBlock = TransitionFilter.GLIDE_FRAMES * channels
+        val effectDepth = DesktopMixSettings.current.value.fx
 
         var index = 0
         while (index < count) {
@@ -906,8 +917,11 @@ class DesktopPlaybackEngine(
             incomingFilter.advance()
 
             if (plan != null) DesktopTransitionRide.gains(plan, styleProgress, transitionGains)
-            val out = if (plan != null) transitionGains[0] else kotlin.math.sqrt(1f - styleProgress)
-            val into = if (plan != null) transitionGains[1] else kotlin.math.sqrt(styleProgress)
+            val pairMix = DesktopMixSettings.pair(track.song.videoId, incoming.song.videoId)
+            val manualCurve = pairMix?.curve ?: DesktopMixSettings.current.value.curve.takeIf { !automixEnabled }
+            val customGains = manualCurve?.let { mixGains(it, styleProgress) }
+            val out = customGains?.first ?: if (plan != null) transitionGains[0] else kotlin.math.sqrt(1f - styleProgress)
+            val into = customGains?.second ?: if (plan != null) transitionGains[1] else kotlin.math.sqrt(styleProgress)
             // Equal-power gains sum past 1 — up to 1.41 at the midpoint — and two loud masters
             // peaking together would be clipped hard by the sink. A smooth trim of
             // 1 / sqrt(out + into) holds that to 1.19 for at most 1.5 dB, and reshapes nothing:
@@ -971,7 +985,7 @@ class DesktopPlaybackEngine(
                         if (ramp > 0f) fxSend += texture.process(channel, leaving) * ramp
                     }
                 }
-                mixed[index] = ((leaving * out + arriving * into) + fxSend) * trim
+                mixed[index] = ((leaving * out + arriving * into) + fxSend * effectDepth) * trim
                 index++
             }
             fadeRemaining -= span
@@ -1793,8 +1807,10 @@ class DesktopPlaybackEngine(
         positionMs: Long,
         durationMs: Long,
     ): TransitionPlan {
-        val manualSeconds = crossfadeSeconds
-        val smart = automixEnabled
+        if (!studioMixingAllowed) return TransitionPlan()
+        val pairMix = DesktopMixSettings.pair(track.song.videoId, next.videoId)
+        val manualSeconds = pairMix?.seconds ?: crossfadeSeconds
+        val smart = automixEnabled && pairMix == null
         if (!smart && manualSeconds <= 0) return TransitionPlan()
         return planTransition(
             analysis = analyzer.analysisFor(track.song.videoId),

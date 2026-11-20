@@ -33,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
@@ -396,6 +397,7 @@ internal fun DesktopMesh(url: String?) {
         }
     }
     val texture = mesh
+    LaunchedEffect(texture) { texture?.let(DesktopArtVisuals::publishAccent) }
     if (texture == null) {
         Box(Modifier.fillMaxSize().background(DesktopBackground))
         return

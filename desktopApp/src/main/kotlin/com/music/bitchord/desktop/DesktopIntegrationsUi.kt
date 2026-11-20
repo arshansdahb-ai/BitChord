@@ -320,6 +320,7 @@ internal fun DesktopSpotifyImportDialog(
 ) {
     val scope = rememberCoroutineScope()
     var link by remember { mutableStateOf("") }
+    var preferredLanguage by remember { mutableStateOf("") }
     var working by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     var failed by remember { mutableStateOf(false) }
@@ -341,7 +342,7 @@ internal fun DesktopSpotifyImportDialog(
         scope.launch {
             try {
                 val (name, tracks) = SpotifyImporter.fetchPlaylistTracks(id)
-                val (songs, missed) = SpotifyImporter.resolveToSongs(tracks) { done, total ->
+                val (songs, missed) = SpotifyImporter.resolveToSongs(tracks, language = preferredLanguage) { done, total ->
                     status = DesktopStrings.format("spotify_import_matching", done, total, fallback = "Matching songs %1\$d of %2\$d")
                 }
                 if (songs.isEmpty()) {
@@ -395,6 +396,13 @@ internal fun DesktopSpotifyImportDialog(
                 enabled = !working,
                 onSubmit = ::start,
                 modifier = Modifier.focusRequester(focus),
+            )
+            DialogField(
+                value = preferredLanguage,
+                onValueChange = { preferredLanguage = it },
+                placeholder = "Preferred song language (optional)",
+                enabled = !working,
+                onSubmit = ::start,
             )
             status?.let {
                 Text(

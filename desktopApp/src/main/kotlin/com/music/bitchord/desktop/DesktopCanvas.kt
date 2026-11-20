@@ -115,6 +115,7 @@ object DesktopCanvasClient {
      * left downloaded tracks with no canvas.
      */
     suspend fun lookup(song: Song): DesktopCanvasArtwork? {
+        DesktopMixSettings.artwork(song)?.let { return it }
         if (song.videoId.isBlank() && (song.localUri != null || song.localPath != null)) return null
         val title = song.title.cleanedForCanvas()
         val artist = song.artist.cleanedForCanvas()
@@ -134,7 +135,7 @@ object DesktopCanvasClient {
 
     /** A canvas already worked out for [song], without going near the network. */
     fun cached(song: Song): DesktopCanvasArtwork? =
-        synchronized(cache) { cache["song|${song.videoId}"]?.artwork }
+        DesktopMixSettings.artwork(song) ?: synchronized(cache) { cache["song|${song.videoId}"]?.artwork }
 
     /**
      * The canvas for a release, for an album page's header.

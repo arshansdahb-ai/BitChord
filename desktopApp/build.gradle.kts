@@ -7,7 +7,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 val appVersion: String = providers.gradleProperty("bitchord.version").orNull
     ?.removePrefix("v")
     ?.takeIf { it.isNotBlank() }
-    ?: "1.8-beta1"
+    ?: "1.8.1-custom15"
 
 /** Which platform this build is *for*, which is the host unless told otherwise. */
 val hostIsWindows = System.getProperty("os.name").contains("Windows", ignoreCase = true)
@@ -26,7 +26,7 @@ val isArm64 = hostArch == "aarch64" || hostArch == "arm64"
 // Windows installer metadata requires MAJOR.MINOR.BUILD even though the app's public version is
 // intentionally displayed without a patch number (1.7 rather than 1.7.0).
 // The build number is the desktop version code; it also keeps "-beta1" out of the numeric installer version.
-val desktopVersionCode = 29
+val desktopVersionCode = 34
 val nativePackageVersion = appVersion.substringBefore('-').split('.').take(2).joinToString(".") + ".$desktopVersionCode"
 
 // FFmpeg decodes audio; see DesktopAudioDecoder.
@@ -356,8 +356,22 @@ val buildWindowNative by tasks.registering {
     }
 }
 
+val buildVoiceBridge by tasks.registering(Exec::class) {
+    val output = layout.buildDirectory.file("voice/BitChordVoice.exe")
+    val windows = System.getenv("WINDIR") ?: "C:/Windows"
+    val compiler = File(windows, "Microsoft.NET/Framework64/v4.0.30319/csc.exe")
+    val speech = File(windows, "Microsoft.NET/Framework64/v4.0.30319/WPF/System.Speech.dll")
+    onlyIf { hostIsWindows && compiler.isFile && speech.isFile }
+    inputs.file(project.file("native/voice/VoiceBridge.cs"))
+    outputs.file(output)
+    doFirst { output.get().asFile.parentFile.mkdirs() }
+    commandLine(compiler.absolutePath, "/nologo", "/optimize+", "/target:exe",
+        "/out:${output.get().asFile.absolutePath}", "/reference:${speech.absolutePath}", project.file("native/voice/VoiceBridge.cs").absolutePath)
+}
+
 tasks.named<ProcessResources>("processResources") {
-    dependsOn(buildAnalysisNative, buildWindowNative)
+    dependsOn(buildAnalysisNative, buildWindowNative, buildVoiceBridge)
+    from(layout.buildDirectory.dir("voice")) { include("*.exe"); into("voice") }
     from(analysisNativeDir) {
         include("*.so", "*.dll", "*.dylib")
         into("native")
@@ -518,6 +532,7 @@ compose.desktop {
         }
 
         nativeDistributions {
+            appResourcesRootDir.set(project.layout.projectDirectory.dir("voice-resources"))
             targetFormats(
                 TargetFormat.Dmg,
                 TargetFormat.Pkg,
@@ -526,7 +541,7 @@ compose.desktop {
                 TargetFormat.Deb,
                 TargetFormat.Rpm,
             )
-            packageName = "BitChord"
+            packageName = "BitChord Custom"
             packageVersion = nativePackageVersion
             description = if (targetOs == "windows") "BitChord" else "Aesthetic YouTube Music client"
             vendor = "BitChord contributors"
@@ -540,6 +555,7 @@ compose.desktop {
                 "java.management",
                 "java.naming",
                 "java.net.http",
+                "jdk.httpserver",
                 "java.prefs",
                 "java.scripting",
                 "java.sql",
@@ -579,8 +595,8 @@ compose.desktop {
 
             windows {
                 iconFile.set(project.file("packaging/icons/AppIcon.ico"))
-                upgradeUuid = "8f3c1d24-6a2b-4f5e-9c17-2b8d54e0a913"
-                menuGroup = "BitChord"
+                upgradeUuid = "c186acac-bcce-4e9d-9b2b-690382376b79"
+                menuGroup = "BitChord Custom"
                 shortcut = true
                 dirChooser = false
                 perUserInstall = true

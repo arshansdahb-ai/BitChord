@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.HighQuality
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Share
@@ -193,6 +194,11 @@ internal fun DesktopSongMenuFor(
     onSetLyricsOffset: ((Int) -> Unit)? = null,
 ) {
     val close = onDismiss
+    var showingInfo by remember(song.videoId) { mutableStateOf(false) }
+    if (showingInfo) {
+        DesktopSongInfoDialog(song, onDismiss = close)
+        return
+    }
     DesktopSongMenu(
         song = song,
         signedIn = actions.signedIn,
@@ -222,6 +228,7 @@ internal fun DesktopSongMenuFor(
         onSleepTimer = { actions.onSleepTimer(it); close() },
         onSleepAfterTrack = { actions.onSleepAfterTrack(); close() },
         onShare = { actions.onShare(song); close() },
+        onSongInfo = { showingInfo = true },
         onMore = onMore,
         onSwitchLyricsQueue = onSwitchLyricsQueue?.let { { it(); close() } },
         queueShowing = queueShowing,
@@ -266,6 +273,7 @@ internal fun DesktopSongMenu(
     onSleepTimer: (Int?) -> Unit,
     onSleepAfterTrack: () -> Unit,
     onShare: () -> Unit,
+    onSongInfo: (() -> Unit)? = null,
     /** Opens the player's own overflow; null on a menu raised from a list. */
     onMore: (() -> Unit)? = null,
     /** Switch the player between lyrics and queue; null when there is no player. */
@@ -468,6 +476,7 @@ internal fun DesktopSongMenu(
         }
 
         DesktopMenuDivider()
+        onSongInfo?.let { DesktopMenuRow(Icons.Rounded.Info, "Song info", onClick = it) }
         DesktopMenuRow(
             icon = Icons.Rounded.Bedtime,
             label = DesktopStrings["sleep_timer", "Sleep timer"],

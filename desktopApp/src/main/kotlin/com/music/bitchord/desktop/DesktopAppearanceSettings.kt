@@ -17,7 +17,9 @@ internal object DesktopAppearanceSettings {
     private val _reduceAnimation = flag(KEY_REDUCE_ANIMATION, false)
     private val _reduceDynamicBlur = flag(KEY_REDUCE_DYNAMIC_BLUR, false)
     private val _hideVolumeBar = flag(KEY_HIDE_VOLUME_BAR, false)
-    private val _ambientBackdrop = flag(KEY_AMBIENT_BACKDROP, false)
+    // The desktop player now opens in the album-lit skin; the switch still lets people turn it off.
+    private val _ambientBackdrop = flag(KEY_AMBIENT_BACKDROP, true)
+    private val _beatLight = flag(KEY_BEAT_LIGHT, true)
 
     /** Freezes the main player's gradient instead of drifting. */
     val reduceAnimation: StateFlow<Boolean> = _reduceAnimation
@@ -31,6 +33,9 @@ internal object DesktopAppearanceSettings {
     /** Diffuses current artwork colors under the window glass chrome like Apple Music. */
     val ambientBackdrop: StateFlow<Boolean> = _ambientBackdrop
 
+    /** Lets artwork color and playback energy animate the window edge. */
+    val beatLight: StateFlow<Boolean> = _beatLight
+
     fun setReduceAnimation(value: Boolean) = write(KEY_REDUCE_ANIMATION, value, _reduceAnimation)
 
     fun setReduceDynamicBlur(value: Boolean) = write(KEY_REDUCE_DYNAMIC_BLUR, value, _reduceDynamicBlur)
@@ -38,6 +43,8 @@ internal object DesktopAppearanceSettings {
     fun setHideVolumeBar(value: Boolean) = write(KEY_HIDE_VOLUME_BAR, value, _hideVolumeBar)
 
     fun setAmbientBackdrop(value: Boolean) = write(KEY_AMBIENT_BACKDROP, value, _ambientBackdrop)
+
+    fun setBeatLight(value: Boolean) = write(KEY_BEAT_LIGHT, value, _beatLight)
 
     private fun write(key: String, value: Boolean, into: MutableStateFlow<Boolean>) {
         DesktopPersistence().saveBoolean(key, value)
@@ -48,4 +55,5 @@ internal object DesktopAppearanceSettings {
     internal const val KEY_REDUCE_DYNAMIC_BLUR = "reduce_dynamic_blur"
     internal const val KEY_HIDE_VOLUME_BAR = "hide_volume_bar"
     internal const val KEY_AMBIENT_BACKDROP = "ambient_backdrop"
+    internal const val KEY_BEAT_LIGHT = "beat_light"
 }
